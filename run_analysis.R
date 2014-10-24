@@ -2,6 +2,10 @@
 # Assumption is that download.R has been run and data
 # is present under data directory
 
+# check for dependent package
+if (!require("dplyr")) install.packages("dplyr")
+library(dplyr)
+
 DATA_DIR <- './data'
 UCI_DIR <- paste(DATA_DIR, "UCI HAR Dataset", sep = "/")
 
@@ -39,14 +43,23 @@ load.dataset <- function(id) {
   alabels <- read.table(paste(UCI_DIR, "activity_labels.txt", sep = "/"))[, 2]
   
   # attach subject and activity labels
-  ds$activity <- sapply(
-    read.table(paste(dir, name.act, sep = "/"), colClasses = c("integer"))[, 1],
-    function(i) { alabels[i] }
+  cbind(
+    activity = sapply(
+      read.table(paste(dir, name.act, sep = "/"), colClasses = c("integer"))[, 1],
+      function(i) { alabels[i] }
+    ),
+    subject = read.table(paste(dir, name.subj, sep = "/"), colClasses = c("integer"))[, 1],
+    ds
   )
-  ds$subject <- read.table(paste(dir, name.subj, sep = "/"), colClasses = c("integer"))[, 1]
-  
-  ds
 }
 
 # loads training and test datasets and merging
 ds <- rbind(load.dataset("train"), load.dataset("test"))
+
+# grouping by activity and subject and calculating means
+ds.tidy <- ds %>%
+  group_by(activity, subject) %>%
+  summarise_each(funs(mean))
+  
+# saving tidy dataset
+write.table(ds.tidy, paste(DATA_DIR, "dataset-tidy.txt", sep = "/"), row.names = F)
